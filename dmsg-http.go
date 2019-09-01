@@ -186,19 +186,19 @@ func (c *Client) do(req *http.Request) (retres *http.Response, reterr error) {
 			// // their CheckRedirect func.
 			// copyHeaders(req)
 
-			// Add the Referer header from the most recent
-			// request URL to the new one, if it's not https->http:
-			if ref := refererForURL(reqs[len(reqs)-1].URL, req.URL); ref != "" {
-				req.Header.Set("Referer", ref)
-			}
-			err = c.checkRedirect(req, reqs)
+			// // Add the Referer header from the most recent
+			// // request URL to the new one, if it's not https->http:
+			// if ref := refererForURL(reqs[len(reqs)-1].URL, req.URL); ref != "" {
+			// 	req.Header.Set("Referer", ref)
+			// }
+			// err = c.checkRedirect(req, reqs)
 
-			// Sentinel error to let users select the
-			// previous response, without closing its
-			// body. See Issue 10069.
-			if err == ErrUseLastResponse {
-				return resp, nil
-			}
+			// // Sentinel error to let users select the
+			// // previous response, without closing its
+			// // body. See Issue 10069.
+			// if err == ErrUseLastResponse {
+			// 	return resp, nil
+			// }
 
 			// Close the previous response's body. But
 			// read at least some of the body so if it's
@@ -292,17 +292,17 @@ func send(ireq *http.Request, rt http.RoundTripper, deadline time.Time) (resp *h
 	req := ireq // req is either the original request, or a modified fork
 
 	if rt == nil {
-		req.closeBody()
+		closeRequestBody(req)
 		return nil, alwaysFalse, errors.New("http: no Client.Transport or DefaultTransport")
 	}
 
 	if req.URL == nil {
-		req.closeBody()
+		closeRequestBody(req)
 		return nil, alwaysFalse, errors.New("http: nil Request.URL")
 	}
 
 	if req.RequestURI != "" {
-		req.closeBody()
+		closeRequestBody(req)
 		return nil, alwaysFalse, errors.New("http: Request.RequestURI can't be set in client requests.")
 	}
 
@@ -310,26 +310,26 @@ func send(ireq *http.Request, rt http.RoundTripper, deadline time.Time) (resp *h
 	// time it's called.
 	forkReq := func() {
 		if ireq == req {
-			req = new(Request)
+			req = new(http.Request)
 			*req = *ireq // shallow clone
 		}
 	}
 
-	// Most the callers of send (Get, Post, et al) don't need
-	// Headers, leaving it uninitialized. We guarantee to the
-	// Transport that this has been initialized, though.
-	if req.Header == nil {
-		forkReq()
-		req.Header = make(Header)
-	}
+	// // Most the callers of send (Get, Post, et al) don't need
+	// // Headers, leaving it uninitialized. We guarantee to the
+	// // Transport that this has been initialized, though.
+	// if req.Header == nil {
+	// 	forkReq()
+	// 	req.Header = make(Header)
+	// }
 
-	if u := req.URL.User; u != nil && req.Header.Get("Authorization") == "" {
-		username := u.Username()
-		password, _ := u.Password()
-		forkReq()
-		req.Header = ireq.Header.clone()
-		req.Header.Set("Authorization", "Basic "+basicAuth(username, password))
-	}
+	// if u := req.URL.User; u != nil && req.Header.Get("Authorization") == "" {
+	// 	username := u.Username()
+	// 	password, _ := u.Password()
+	// 	forkReq()
+	// 	req.Header = ireq.Header.clone()
+	// 	req.Header.Set("Authorization", "Basic "+basicAuth(username, password))
+	// }
 
 	if !deadline.IsZero() {
 		forkReq()
@@ -360,4 +360,13 @@ func send(ireq *http.Request, rt http.RoundTripper, deadline time.Time) (resp *h
 		}
 	}
 	return resp, nil, nil
+}
+
+func stripPassword(u *url.URL) string {
+	pass, passSet := u.User.Password()
+	if passSet {
+		return strings.Replace(u.String(), pass+"@", "***@", 1)
+	}
+
+	return u.String()
 }
