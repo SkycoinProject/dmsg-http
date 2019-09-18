@@ -18,6 +18,8 @@ func DefaultDMSGClient(pubKey cipher.PubKey, secKey cipher.SecKey) *http.Client 
 func DMSGClient(dicoveryAddress string, pubKey cipher.PubKey, secKey cipher.SecKey) *http.Client {
 	transport := DMSGTransport{
 		Discovery: disc.NewHTTP(dicoveryAddress),
+		PubKey:    pubKey,
+		SecKey:    secKey,
 	}
 	timeout, err := time.ParseDuration("30s")
 	if err != nil {

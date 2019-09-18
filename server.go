@@ -2,47 +2,36 @@ package dmsghttp
 
 import (
 	"context"
-	"net"
+	"log"
 	"net/http"
 
 	"github.com/skycoin/dmsg/cipher"
-	"github.com/skycoin/skycoin/src/util/logging"
+	"github.com/skycoin/dmsg/disc"
 
 	"github.com/skycoin/dmsg"
 )
 
 type Server struct {
-	PubKey cipher.PubKey
-	SecKey cipher.SecKey
+	PubKey       cipher.PubKey
+	SecKey       cipher.SecKey
+	Port         uint16
+	DiscoveryURL string
 }
 
-func (s Server) Serve(l net.Listener, handler http.Handler) error {
-	ctx := context.Background()
-	srv := &http.Server{Handler: handler}
-	logger := logging.MustGetLogger("dmsg-server")
+func (s Server) Serve(handler http.Handler) (*dmsg.Server, error) {
+	hsrv := http.Server{Handler: handler}
 
-	// tcpConn, err := net.Dial("tcp", entry.Server.Address)
-	// if err != nil {
-	// 	return err
-	// }
-	// ns, err := noise.New(noise.HandshakeXK, noise.Config{
-	// 	LocalPK:   c.pk,
-	// 	LocalSK:   c.sk,
-	// 	RemotePK:  srvPK,
-	// 	Initiator: true,
-	// })
-	// if err != nil {
-	// 	return err
-	// }
-	// nc, err := noise.WrapConn(tcpConn, ns, TransportHandshakeTimeout)
-	// if err != nil {
-	// 	return err
-	// }
+	if len(s.DiscoveryURL) == 0 {
+		s.DiscoveryURL = DefaultDiscoveryURL
+	}
+	dc := disc.NewHTTP(s.DiscoveryURL)
 
-	conn := dmsg.NewClientConn(logger, nc, c.pk, srvPK, c.pm)
-	// if err := conn.readOK(); err != nil {
-	// 	return nil, err
-	// }
-	return conn.Serve(ctx) //TODO (srdjan) serve handles incomming but it reguires a whole lot of client side things to be configured
-	// return srv.Serve(l)
+	client := dmsg.NewClient(s.PubKey, s.SecKey, dc)
+	if err := client.InitiateServerConnections(context.Background(), 1); err != nil {
+		log.Fatalf("Error initiating server connections by initiator: %v", err)
+	}
+
+	list, _ := client.Listen(s.Port)
+	go func() { _ = hsrv.Serve(list) }()
+	return nil, nil
 }
