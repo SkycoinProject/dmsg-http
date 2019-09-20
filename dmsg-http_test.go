@@ -2,12 +2,14 @@ package dmsghttp_test
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"testing"
-	"time"
+
+	"github.com/skycoin/dmsg/cipher"
+	"github.com/stretchr/testify/require"
 
 	dmsghttp "github.com/skycoin/dmsg-http"
-	"github.com/skycoin/dmsg/cipher"
 )
 
 // import httpdmsg
@@ -20,36 +22,44 @@ const (
 
 func TestDMSGClient(t *testing.T) {
 	// generate keys and create server
-	serverPK, serverSK := cipher.GenerateKeyPair()
-	server := dmsghttp.Server{serverPK, serverSK, uint16(testPort), testDC}
+	sPK, sSK := cipher.GenerateKeyPair()
+	httpS := dmsghttp.Server{PubKey: sPK, SecKey: sSK, Port: testPort, DiscoveryURL: testDC}
 
 	mux := http.NewServeMux()
-	th := &timeHandler{format: time.RFC1123}
-	mux.Handle("/", th)
-	_, err := server.Serve(mux)
+	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
+		_, err := w.Write([]byte("Hello World!"))
+		if err != nil {
+			panic(err)
+		}
+	})
 
-	if err != nil {
-		fmt.Printf("Error is %v", err)
-	}
+	sErr := make(chan error, 1)
+	go func() {
+		sErr <- httpS.Serve(mux)
+		close(sErr)
+	}()
+	defer func() {
+		require.NoError(t, httpS.Close())
+		err := <-sErr
+		require.Error(t, err)
+		require.Equal(t, "http: Server closed", err.Error())
+	}()
 
 	// generate keys and initiate client
-	clientPK, clientSK := cipher.GenerateKeyPair()
-	c := dmsghttp.DMSGClient(testDC, clientPK, clientSK)
+	cPK, cSK := cipher.GenerateKeyPair()
+	c := dmsghttp.DMSGClient(testDC, cPK, cSK)
 
-	req, _ := http.NewRequest("GET", "locahost/", nil)
-	req.Header.Add("dmsg-addr", fmt.Sprintf("%v:%d", serverPK.Hex(), testPort))
-	c.Do(req)
+	req, err := http.NewRequest("GET", fmt.Sprintf("dmsg://%v:%d/", sPK.Hex(), testPort), nil)
+	require.NoError(t, err)
+
+	resp, err := c.Do(req)
+	require.NoError(t, err)
+
+	respB, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Equal(t, "Hello World!", string(respB))
 }
 
 func TestDMSGClientTargetingSpecificRoute(t *testing.T) {
 	//TODO implement this
-}
-
-type timeHandler struct {
-	format string
-}
-
-func (th *timeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	tm := time.Now().Format(th.format)
-	w.Write([]byte("The time is: " + tm))
 }
