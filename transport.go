@@ -15,16 +15,20 @@ import (
 	"github.com/skycoin/skycoin/src/util/logging"
 )
 
+// Defaults for dmsg configuration, such as discovery URL
 const (
 	DefaultDiscoveryURL = "https://messaging.discovery.skywire.skycoin.net"
 )
 
+// DMSGTransport holds information about client who is initiating communication.
 type DMSGTransport struct {
 	Discovery disc.APIClient
 	PubKey    cipher.PubKey
 	SecKey    cipher.SecKey
 }
 
+// RoundTrip implements golang's http package support for alternative transport protocols.
+// In this case DMSG is used instead of TCP to initiate the communication with the server.
 func (t DMSGTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// init client
 	dmsgC := dmsg.NewClient(t.PubKey, t.SecKey, t.Discovery, dmsg.SetLogger(logging.MustGetLogger("dmsgC_httpC")))

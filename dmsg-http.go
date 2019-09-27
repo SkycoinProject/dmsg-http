@@ -9,26 +9,23 @@ import (
 )
 
 // DefaultDMSGClient creates http Client using default discovery service
+// Default value can be found in dmsghttp.DefaultDiscoveryURL
 func DefaultDMSGClient(pubKey cipher.PubKey, secKey cipher.SecKey) *http.Client {
-	// TODO check is there better way to handle pub and sec key
-	return DMSGClient(DefaultDiscoveryURL, pubKey, secKey)
+	return DMSGClient(disc.NewHTTP(DefaultDiscoveryURL), pubKey, secKey)
 }
 
 // DMSGClient creates http Client using provided discovery service and public / secret keypair
-func DMSGClient(dicoveryAddress string, pubKey cipher.PubKey, secKey cipher.SecKey) *http.Client {
+// Returned client is using dmsg transport protocol instead of tcp for establishing connection
+func DMSGClient(discovery disc.APIClient, pubKey cipher.PubKey, secKey cipher.SecKey) *http.Client {
 	transport := DMSGTransport{
-		Discovery: disc.NewHTTP(dicoveryAddress),
+		Discovery: discovery,
 		PubKey:    pubKey,
 		SecKey:    secKey,
 	}
-	timeout, err := time.ParseDuration("30s")
-	if err != nil {
-		//TODO add log
-		timeout = time.Minute
-	}
+
 	return &http.Client{
 		Transport: transport,
 		Jar:       nil,
-		Timeout:   timeout,
+		Timeout:   time.Second * 30,
 	}
 }
