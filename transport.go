@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/skycoin/dmsg"
 	"github.com/skycoin/dmsg/cipher"
@@ -17,7 +18,7 @@ import (
 
 // Defaults for dmsg configuration, such as discovery URL
 const (
-	DefaultDiscoveryURL = "https://messaging.discovery.skywire.skycoin.net"
+	DefaultDiscoveryURL = "https://messaging.discovery.skywire.skycoin.com"
 )
 
 // DMSGTransport holds information about client who is initiating communication.
@@ -25,13 +26,16 @@ type DMSGTransport struct {
 	Discovery disc.APIClient
 	PubKey    cipher.PubKey
 	SecKey    cipher.SecKey
+
+	dmsgC      *dmsg.Client // DMSG Client singleton
+	clientInit sync.Once    // have only one client init per DMSGTransport instance
 }
 
 // RoundTrip implements golang's http package support for alternative transport protocols.
 // In this case DMSG is used instead of TCP to initiate the communication with the server.
-func (t DMSGTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+func (t *DMSGTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// init client
-	dmsgC := dmsg.NewClient(t.PubKey, t.SecKey, t.Discovery, dmsg.SetLogger(logging.MustGetLogger("dmsgC_httpC")))
+	dmsgC := t.dmsgClient()
 
 	// connect to the DMSG server
 	if err := dmsgC.InitiateServerConnections(context.Background(), 1); err != nil {
@@ -61,4 +65,11 @@ func (t DMSGTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	return http.ReadResponse(bufio.NewReader(conn), req)
+}
+
+func (t *DMSGTransport) dmsgClient() *dmsg.Client {
+	t.clientInit.Do(func() {
+		t.dmsgC = dmsg.NewClient(t.PubKey, t.SecKey, t.Discovery, dmsg.SetLogger(logging.MustGetLogger("dmsgC_httpC")))
+	})
+	return t.dmsgC
 }
