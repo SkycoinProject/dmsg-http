@@ -27,7 +27,8 @@ type DMSGTransport struct {
 	PubKey    cipher.PubKey
 	SecKey    cipher.SecKey
 
-	dmsgC *dmsg.Client // DMSG Client singleton
+	dmsgC      *dmsg.Client // DMSG Client singleton
+	clientInit sync.Once    // have only one client init per DMSGTransport instance
 }
 
 // RoundTrip implements golang's http package support for alternative transport protocols.
@@ -66,10 +67,8 @@ func (t *DMSGTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return http.ReadResponse(bufio.NewReader(conn), req)
 }
 
-var once sync.Once
-
 func (t *DMSGTransport) dmsgClient() *dmsg.Client {
-	once.Do(func() {
+	t.clientInit.Do(func() {
 		t.dmsgC = dmsg.NewClient(t.PubKey, t.SecKey, t.Discovery, dmsg.SetLogger(logging.MustGetLogger("dmsgC_httpC")))
 	})
 	return t.dmsgC
