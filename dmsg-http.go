@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/skycoin/dmsg/cipher"
-	"github.com/skycoin/dmsg/disc"
+	"github.com/SkycoinProject/dmsg/cipher"
+	"github.com/SkycoinProject/dmsg/disc"
 )
 
 // DefaultDMSGClient creates http Client using default discovery service
