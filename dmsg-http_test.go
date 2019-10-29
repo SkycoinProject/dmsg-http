@@ -117,6 +117,7 @@ func TestDMSGClientTargetingSpecificRoute(t *testing.T) {
 	require.Equal(t, "Routes Work!", string(respB))
 }
 
+//FIXME - test was failing before imports fix - err: remote has no DelegatedServers
 func TestDMSGClientWithMultipleRoutes(t *testing.T) {
 	dmsgD := disc.NewMock()
 	dmsgS, dmsgSErr := createDmsgSrv(t, dmsgD)

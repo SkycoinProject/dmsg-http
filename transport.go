@@ -17,7 +17,7 @@ import (
 
 // Defaults for dmsg configuration, such as discovery URL
 const (
-	DefaultDiscoveryURL = "https://messaging.discovery.skywire.skycoin.net"
+	DefaultDiscoveryURL = "http://dmsg.discovery.skywire.skycoin.com"
 )
 
 // DMSGTransport holds information about client who is initiating communication.
