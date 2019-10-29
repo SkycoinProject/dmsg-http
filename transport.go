@@ -10,14 +10,14 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/skycoin/dmsg"
-	"github.com/skycoin/dmsg/cipher"
-	"github.com/skycoin/dmsg/disc"
+	"github.com/SkycoinProject/dmsg"
+	"github.com/SkycoinProject/dmsg/cipher"
+	"github.com/SkycoinProject/dmsg/disc"
 )
 
 // Defaults for dmsg configuration, such as discovery URL
 const (
-	DefaultDiscoveryURL = "https://messaging.discovery.skywire.skycoin.com"
+	DefaultDiscoveryURL = "http://dmsg.discovery.skywire.skycoin.com"
 )
 
 // DMSGTransport holds information about client who is initiating communication.

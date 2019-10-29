@@ -5,11 +5,11 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/skycoin/dmsg/cipher"
-	"github.com/skycoin/dmsg/disc"
-	"github.com/skycoin/skycoin/src/util/logging"
+	"github.com/SkycoinProject/dmsg/cipher"
+	"github.com/SkycoinProject/dmsg/disc"
+	"github.com/SkycoinProject/skycoin/src/util/logging"
 
-	"github.com/skycoin/dmsg"
+	"github.com/SkycoinProject/dmsg"
 )
 
 // Server holds relevant data for server to run properly

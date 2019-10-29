@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/skycoin/dmsg"
-	"github.com/skycoin/dmsg/cipher"
-	"github.com/skycoin/dmsg/disc"
+	"github.com/SkycoinProject/dmsg"
+	"github.com/SkycoinProject/dmsg/cipher"
+	"github.com/SkycoinProject/dmsg/disc"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/nettest"
 
