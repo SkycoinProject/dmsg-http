@@ -9,15 +9,16 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
-	"github.com/skycoin/dmsg"
-	"github.com/skycoin/dmsg/cipher"
-	"github.com/skycoin/dmsg/disc"
+	"github.com/SkycoinProject/dmsg"
+	"github.com/SkycoinProject/dmsg/cipher"
+	"github.com/SkycoinProject/dmsg/disc"
 )
 
 // Defaults for dmsg configuration, such as discovery URL
 const (
-	DefaultDiscoveryURL = "https://messaging.discovery.skywire.skycoin.com"
+	DefaultDiscoveryURL = "http://dmsg.discovery.skywire.skycoin.com"
 )
 
 // DMSGTransport holds information about client who is initiating communication.
@@ -60,6 +61,8 @@ func (t DMSGTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		transport, transportErr = t.dmsgC.Dial(context.Background(), pk, port)
 		if transportErr != nil {
 			log.Println("Transport was not established, retrying...")
+			// Adding this to make sure we have enough time for delegate servers to become available
+			time.Sleep(200 * time.Millisecond)
 			continue
 		}
 		transportErr = nil
