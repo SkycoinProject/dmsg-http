@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/SkycoinProject/dmsg"
 	"github.com/SkycoinProject/dmsg/cipher"
@@ -60,6 +61,8 @@ func (t DMSGTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		transport, transportErr = t.dmsgC.Dial(context.Background(), pk, port)
 		if transportErr != nil {
 			log.Println("Transport was not established, retrying...")
+			// Adding this to make sure we have enough time for delegate servers to become available
+			time.Sleep(200 * time.Millisecond)
 			continue
 		}
 		transportErr = nil

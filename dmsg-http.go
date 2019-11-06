@@ -23,7 +23,7 @@ func DMSGClient(discovery disc.APIClient, pubKey cipher.PubKey, secKey cipher.Se
 		Discovery:  discovery,
 		PubKey:     pubKey,
 		SecKey:     secKey,
-		RetryCount: 10,
+		RetryCount: 20,
 	}
 	transport.dmsgC = dmsg.NewClient(pubKey, secKey, discovery, dmsg.SetLogger(logging.MustGetLogger("dmsgC_httpC")))
 
