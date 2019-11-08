@@ -8,33 +8,36 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
-	"github.com/skycoin/dmsg"
-	"github.com/skycoin/dmsg/cipher"
-	"github.com/skycoin/dmsg/disc"
-	"github.com/skycoin/skycoin/src/util/logging"
+	"github.com/SkycoinProject/dmsg"
+	"github.com/SkycoinProject/dmsg/cipher"
+	"github.com/SkycoinProject/dmsg/disc"
 )
 
 // Defaults for dmsg configuration, such as discovery URL
 const (
-	DefaultDiscoveryURL = "https://messaging.discovery.skywire.skycoin.net"
+	DefaultDiscoveryURL = "http://dmsg.discovery.skywire.skycoin.com"
 )
 
 // DMSGTransport holds information about client who is initiating communication.
 type DMSGTransport struct {
-	Discovery disc.APIClient
-	PubKey    cipher.PubKey
-	SecKey    cipher.SecKey
+	Discovery  disc.APIClient
+	PubKey     cipher.PubKey
+	SecKey     cipher.SecKey
+	RetryCount uint8
+
+	dmsgC      *dmsg.Client // DMSG Client singleton
+	clientInit sync.Once    // have only one client init per DMSGTransport instance
 }
 
 // RoundTrip implements golang's http package support for alternative transport protocols.
 // In this case DMSG is used instead of TCP to initiate the communication with the server.
 func (t DMSGTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	// init client
-	dmsgC := dmsg.NewClient(t.PubKey, t.SecKey, t.Discovery, dmsg.SetLogger(logging.MustGetLogger("dmsgC_httpC")))
 
 	// connect to the DMSG server
-	if err := dmsgC.InitiateServerConnections(context.Background(), 1); err != nil {
+	if err := t.dmsgC.InitiateServerConnections(context.Background(), 1); err != nil {
 		log.Fatalf("Error initiating server connections by initiator: %v", err)
 	}
 
@@ -50,15 +53,29 @@ func (t DMSGTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	rPort, _ := strconv.Atoi(addrSplit[1])
 	port := uint16(rPort)
 
-	conn, err := dmsgC.Dial(context.Background(), pk, port)
-	if err != nil {
+	var (
+		transport    *dmsg.Transport
+		transportErr error
+	)
+	for i := uint8(0); i < t.RetryCount; i++ {
+		transport, transportErr = t.dmsgC.Dial(context.Background(), pk, port)
+		if transportErr != nil {
+			log.Println("Transport was not established, retrying...")
+			// Adding this to make sure we have enough time for delegate servers to become available
+			time.Sleep(200 * time.Millisecond)
+			continue
+		}
+		transportErr = nil
+		break
+	}
+	if transportErr != nil {
+		return nil, transportErr
+	}
+	defer transport.Close()
+
+	if err := req.Write(transport); err != nil {
 		return nil, err
 	}
-	defer conn.Close()
 
-	if err := req.Write(conn); err != nil {
-		return nil, err
-	}
-
-	return http.ReadResponse(bufio.NewReader(conn), req)
+	return http.ReadResponse(bufio.NewReader(transport), req)
 }
