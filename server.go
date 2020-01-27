@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/SkycoinProject/dmsg"
 	"github.com/SkycoinProject/dmsg/cipher"
 	"github.com/SkycoinProject/dmsg/disc"
 )
@@ -28,7 +27,10 @@ type Server struct {
 func (s *Server) Serve(handler http.Handler) error {
 	s.hs = &http.Server{Handler: handler}
 
-	client := dmsg.NewClient(s.PubKey, s.SecKey, s.Discovery, dmsg.DefaultConfig())
+	client, err := getClient(s.PubKey, s.SecKey)
+	if err != nil {
+		return err
+	}
 
 	// this serve invocation opens connectio to the DMSG Server and registers this Client on the Discovery
 	go client.Serve()

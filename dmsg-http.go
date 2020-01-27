@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/SkycoinProject/dmsg"
 	"github.com/SkycoinProject/dmsg/cipher"
 	"github.com/SkycoinProject/dmsg/disc"
 )
@@ -24,7 +23,7 @@ func DMSGClient(discovery disc.APIClient, pubKey cipher.PubKey, secKey cipher.Se
 		SecKey:     secKey,
 		RetryCount: 20,
 	}
-	transport.dmsgC = dmsg.NewClient(pubKey, secKey, discovery, dmsg.DefaultConfig())
+
 	return &http.Client{
 		Transport: transport,
 		Jar:       nil,

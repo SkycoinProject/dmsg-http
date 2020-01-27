@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/SkycoinProject/dmsg"
@@ -27,9 +26,6 @@ type DMSGTransport struct {
 	PubKey     cipher.PubKey
 	SecKey     cipher.SecKey
 	RetryCount uint8
-
-	dmsgC      *dmsg.Client // DMSG Client singleton
-	clientInit sync.Once    // have only one client init per DMSGTransport instance
 }
 
 // RoundTrip implements golang's http package support for alternative transport protocols.
@@ -47,13 +43,18 @@ func (t DMSGTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	rPort, _ := strconv.Atoi(addrSplit[1])
 	port := uint16(rPort)
 
+	serverAddress := dmsg.Addr{PK: pk, Port: port}
+	dmsgC, err := getClient(t.PubKey, t.SecKey)
+	if err != nil {
+		return nil, err
+	}
+
 	var (
 		stream    *dmsg.Stream
 		streamErr error
 	)
 	for i := uint8(0); i < t.RetryCount; i++ {
-		serverAddress := dmsg.Addr{PK: pk, Port: port}
-		stream, streamErr = t.dmsgC.DialStream(context.Background(), serverAddress)
+		stream, streamErr = dmsgC.DialStream(context.Background(), serverAddress)
 		if streamErr != nil {
 			log.Printf("Error dialing responder: %s. retrying...", streamErr)
 			// Adding this to make sure we have enough time for delegate servers to become available
