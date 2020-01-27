@@ -1,15 +1,12 @@
 package dmsghttp
 
 import (
-	"context"
-	"log"
 	"net/http"
-
-	"github.com/SkycoinProject/dmsg/cipher"
-	"github.com/SkycoinProject/dmsg/disc"
-	"github.com/SkycoinProject/skycoin/src/util/logging"
+	"time"
 
 	"github.com/SkycoinProject/dmsg"
+	"github.com/SkycoinProject/dmsg/cipher"
+	"github.com/SkycoinProject/dmsg/disc"
 )
 
 // Server holds relevant data for server to run properly
@@ -31,10 +28,11 @@ type Server struct {
 func (s *Server) Serve(handler http.Handler) error {
 	s.hs = &http.Server{Handler: handler}
 
-	client := dmsg.NewClient(s.PubKey, s.SecKey, s.Discovery, dmsg.SetLogger(logging.MustGetLogger("dmsgC_httpS")))
-	if err := client.InitiateServerConnections(context.Background(), 1); err != nil {
-		log.Fatalf("Error initiating server connections by initiator: %v", err)
-	}
+	client := dmsg.NewClient(s.PubKey, s.SecKey, s.Discovery, dmsg.DefaultConfig())
+
+	// this serve invocation opens connectio to the DMSG Server and registers this Client on the Discovery
+	go client.Serve()
+	time.Sleep(time.Second) // wait until connection is established
 
 	list, err := client.Listen(s.Port)
 	if err != nil {
