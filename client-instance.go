@@ -11,27 +11,26 @@ import (
 )
 
 var (
-	singleton *dmsg.Client
-	once      sync.Once
+	clients = struct {
+		sync.RWMutex
+		entries map[cipher.PubKey]*dmsg.Client
+	}{entries: make(map[cipher.PubKey]*dmsg.Client)}
 
-	usedPub cipher.PubKey
-	usedSec cipher.SecKey
-
-	errWrongPubKeyUsed error = errors.New("dmsg client already initialized with different pub key")
-	errWrongSecKeyUsed error = errors.New("dmsg client already initialized with different sec key")
+	errCreate error = errors.New("dmsg client don't exists and was not created successfully")
 )
 
 func getClient(pubKey cipher.PubKey, secKey cipher.SecKey) (*dmsg.Client, error) {
-	once.Do(func() {
-		singleton = dmsg.NewClient(pubKey, secKey, disc.NewHTTP(DefaultDiscoveryURL), dmsg.DefaultConfig())
-		usedPub = pubKey
-		usedSec = secKey
-	})
-	if pubKey != usedPub {
-		return nil, errWrongPubKeyUsed
+	if val, ok := clients.entries[pubKey]; ok {
+		return val, nil
 	}
-	if secKey != usedSec {
-		return nil, errWrongSecKeyUsed
+
+	clients.Lock()
+	clients.entries[pubKey] = dmsg.NewClient(pubKey, secKey, disc.NewHTTP(DefaultDiscoveryURL), dmsg.DefaultConfig())
+	clients.Unlock()
+
+	if clients.entries[pubKey] != nil {
+		return clients.entries[pubKey], nil
 	}
-	return singleton, nil
+
+	return nil, errCreate
 }
