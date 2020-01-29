@@ -44,7 +44,7 @@ func (t DMSGTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	port := uint16(rPort)
 
 	serverAddress := dmsg.Addr{PK: pk, Port: port}
-	dmsgC, err := getClient(t.PubKey, t.SecKey)
+	dmsgC, err := GetClient(t.PubKey, t.SecKey)
 	if err != nil {
 		return nil, err
 	}

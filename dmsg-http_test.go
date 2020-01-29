@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/SkycoinProject/dmsg"
 	"github.com/SkycoinProject/dmsg/cipher"
@@ -18,6 +19,91 @@ import (
 const (
 	testPort uint16 = 8081
 )
+
+func TestClientsMapNotConcurent(t *testing.T) {
+	pk, sk := cipher.GenerateKeyPair()
+	ppk, ssk := cipher.GenerateKeyPair()
+	pppk, sssk := cipher.GenerateKeyPair()
+	c, _ := dmsghttp.GetClient(pk, sk)
+	ca, _ := dmsghttp.GetClient(ppk, ssk)
+	cb, _ := dmsghttp.GetClient(pk, sk)
+	cc, _ := dmsghttp.GetClient(pppk, sssk)
+	cd, _ := dmsghttp.GetClient(ppk, ssk)
+	ce, _ := dmsghttp.GetClient(pppk, sssk)
+
+	fmt.Println("Client 1 and 3 should be equal")
+	fmt.Println("PK Client 1 : ", c.EntityCommon.LocalPK())
+	fmt.Println("PK Client 3 : ", cb.EntityCommon.LocalPK())
+	require.Equal(t, c.EntityCommon.LocalPK(), cb.EntityCommon.LocalPK())
+	require.Equal(t, c, cb)
+
+	fmt.Println("Client 2 and 5 should be equal")
+	fmt.Println("PK Client 2 : ", ca.EntityCommon.LocalPK())
+	fmt.Println("PK Client 5 : ", cd.EntityCommon.LocalPK())
+	require.Equal(t, ca.EntityCommon.LocalPK(), cd.EntityCommon.LocalPK())
+	require.Equal(t, ca, cd)
+
+	fmt.Println("Client 4 and 6 should be equal")
+	fmt.Println("PK Client 4 : ", cc.EntityCommon.LocalPK())
+	fmt.Println("PK Client 6 : ", ce.EntityCommon.LocalPK())
+	require.Equal(t, cc.EntityCommon.LocalPK(), ce.EntityCommon.LocalPK())
+	require.Equal(t, cc, ce)
+}
+
+func TestClientsMapConcurent(t *testing.T) {
+	pk, sk := cipher.GenerateKeyPair()
+	ppk, ssk := cipher.GenerateKeyPair()
+	pppk, sssk := cipher.GenerateKeyPair()
+
+	var c, ca, cb, cc, cd, ce *dmsg.Client
+
+	go func() {
+		c, _ = dmsghttp.GetClient(pk, sk)
+		ca, _ = dmsghttp.GetClient(ppk, ssk)
+		cb, _ = dmsghttp.GetClient(pk, sk)
+		cc, _ = dmsghttp.GetClient(pppk, sssk)
+		cd, _ = dmsghttp.GetClient(ppk, ssk)
+		ce, _ = dmsghttp.GetClient(pppk, sssk)
+	}()
+
+	go func() {
+		c, _ = dmsghttp.GetClient(pk, sk)
+		ca, _ = dmsghttp.GetClient(ppk, ssk)
+		cb, _ = dmsghttp.GetClient(pk, sk)
+		cc, _ = dmsghttp.GetClient(pppk, sssk)
+		cd, _ = dmsghttp.GetClient(ppk, ssk)
+		ce, _ = dmsghttp.GetClient(pppk, sssk)
+	}()
+
+	go func() {
+		c, _ = dmsghttp.GetClient(pk, sk)
+		ca, _ = dmsghttp.GetClient(ppk, ssk)
+		cb, _ = dmsghttp.GetClient(pk, sk)
+		cc, _ = dmsghttp.GetClient(pppk, sssk)
+		cd, _ = dmsghttp.GetClient(ppk, ssk)
+		ce, _ = dmsghttp.GetClient(pppk, sssk)
+	}()
+
+	time.Sleep(1 * time.Second)
+
+	fmt.Println("Client 1 and 3 should be equal")
+	fmt.Println("PK Client 1 : ", c.EntityCommon.LocalPK())
+	fmt.Println("PK Client 3 : ", cb.EntityCommon.LocalPK())
+	require.Equal(t, c.EntityCommon.LocalPK(), cb.EntityCommon.LocalPK())
+	require.Equal(t, c, cb)
+
+	fmt.Println("Client 2 and 5 should be equal")
+	fmt.Println("PK Client 2 : ", ca.EntityCommon.LocalPK())
+	fmt.Println("PK Client 5 : ", cd.EntityCommon.LocalPK())
+	require.Equal(t, ca.EntityCommon.LocalPK(), cd.EntityCommon.LocalPK())
+	require.Equal(t, ca, cd)
+
+	fmt.Println("Client 4 and 6 should be equal")
+	fmt.Println("PK Client 4 : ", cc.EntityCommon.LocalPK())
+	fmt.Println("PK Client 6 : ", ce.EntityCommon.LocalPK())
+	require.Equal(t, cc.EntityCommon.LocalPK(), ce.EntityCommon.LocalPK())
+	require.Equal(t, cc, ce)
+}
 
 func TestDMSGClient(t *testing.T) {
 	dmsgD := disc.NewMock()
@@ -206,11 +292,11 @@ func createDmsgSrv(t *testing.T, dc disc.APIClient) (srv *dmsg.Server, srvErr <-
 	require.NoError(t, err)
 	l, err := nettest.NewLocalListener("tcp")
 	require.NoError(t, err)
-	srv, err = dmsg.NewServer(pk, sk, "", l, dc)
+	srv = dmsg.NewServer(pk, sk, dc)
 	require.NoError(t, err)
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- srv.Serve()
+		errCh <- srv.Serve(l, "")
 		close(errCh)
 	}()
 	return srv, errCh

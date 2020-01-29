@@ -19,7 +19,7 @@ var (
 	errCreate error = errors.New("dmsg client don't exists and was not created successfully")
 )
 
-func getClient(pubKey cipher.PubKey, secKey cipher.SecKey) (*dmsg.Client, error) {
+func GetClient(pubKey cipher.PubKey, secKey cipher.SecKey) (*dmsg.Client, error) {
 	if val, ok := clients.entries[pubKey]; ok {
 		return val, nil
 	}

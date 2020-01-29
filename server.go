@@ -27,7 +27,7 @@ type Server struct {
 func (s *Server) Serve(handler http.Handler) error {
 	s.hs = &http.Server{Handler: handler}
 
-	client, err := getClient(s.PubKey, s.SecKey)
+	client, err := GetClient(s.PubKey, s.SecKey)
 	if err != nil {
 		return err
 	}
