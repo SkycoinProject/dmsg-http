@@ -1,9 +1,11 @@
 package dmsghttp_test
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 	"testing"
 	"time"
 
@@ -18,6 +20,11 @@ import (
 
 const (
 	testPort uint16 = 8081
+)
+
+var (
+	expectedSmallContent = "small content, small content, small content, small content, small content, "
+	expectedLargeContent = "" // populated at the start of main, not to keep 1000 occurrences here
 )
 
 func TestClientsMapNotConcurent(t *testing.T) {
@@ -287,6 +294,11 @@ func TestDMSGClientWithMultipleRoutes(t *testing.T) {
 	require.Equal(t, "Routes really do Work!", string(respB))
 }
 
+func TestEofShowcase(t *testing.T) {
+	createDmsgSrvForEofShowcase()
+	createDmsgClientForEofShowcase()
+}
+
 func createDmsgSrv(t *testing.T, dc disc.APIClient) (srv *dmsg.Server, srvErr <-chan error) {
 	pk, sk, err := cipher.GenerateDeterministicKeyPair([]byte("s"))
 	require.NoError(t, err)
@@ -300,4 +312,64 @@ func createDmsgSrv(t *testing.T, dc disc.APIClient) (srv *dmsg.Server, srvErr <-
 		close(errCh)
 	}()
 	return srv, errCh
+}
+
+func createDmsgSrvForEofShowcase() {
+	port := uint16(9091) // use any port you like here, make sure it's referenced in the cmd/client/http-client.go
+	// dmsgD := disc.NewHTTP("http://dmsg.discovery.skywire.skycoin.com")
+	dmsgD := disc.NewHTTP("http://localhost:9090")
+
+	sPK, sSK := cipher.GenerateKeyPair()
+	// note down public key printed out bellow and use the value in cmd/client/http-client.go 'serverPubKey' value
+	fmt.Printf("Starting http server on public key: %s and port: %v", sPK.Hex(), port)
+
+	httpS := dmsghttp.Server{
+		PubKey:    sPK,
+		SecKey:    sSK,
+		Port:      port,
+		Discovery: dmsgD,
+	}
+
+	// prepare server route handling
+	mux := http.NewServeMux()
+	mux.HandleFunc("/small", SmallRequestHandler)
+	mux.HandleFunc("/large", LargeRequestHandler)
+
+	// run the server
+	sErr := make(chan error, 1)
+	sErr <- httpS.Serve(mux)
+	close(sErr)
+}
+
+func createDmsgClientForEofShowcase() {
+	var b bytes.Buffer
+	countExpectedLargeContent := 1000 // how many times we expect 'large content, ' phrase to appear in the response
+	for i := countExpectedLargeContent; i > 0; i-- {
+		b.WriteString("large content, ")
+	}
+	expectedLargeContent = b.String()
+
+	sPK, sSK := cipher.GenerateKeyPair()
+	// disc := disc.NewHTTP("http://dmsg.discovery.skywire.skycoin.com")
+	disc := disc.NewHTTP("http://localhost:9090")
+	client := dmsghttp.DMSGClient(disc, sPK, sSK)
+
+	// this one is returned ok
+	resp := MakeRequest("small", client)
+	if resp != expectedSmallContent {
+		fmt.Printf("Received small content is not what's expected. Expected %s but received %s\n", expectedSmallContent, resp)
+		return
+	}
+	fmt.Println("Small content is ok")
+
+	// this one fails with following message "Error reading data:  http: unexpected EOF reading trailer"
+	resp = MakeRequest("large", client)
+	if resp != expectedLargeContent {
+		largeContentRegex := regexp.MustCompile("large content,")
+		matches := largeContentRegex.FindAllStringIndex(resp, -1)
+		countActual := len(matches) // how many times we received expected phrase,
+		fmt.Printf("Received large content is not what's expected. Expected %v but received %v 'large content' occurrences\n", countExpectedLargeContent, countActual)
+		return
+	}
+	fmt.Print("Large content is ok")
 }
