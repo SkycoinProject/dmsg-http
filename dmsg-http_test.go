@@ -23,6 +23,8 @@ const (
 )
 
 var (
+	publicKey            = "036c4441b76aad343a9073d12f72d024009feabd8a0ccc92d3f88dacc93aafca65"
+	secretKey            = "c483329a1057a578d0f1b93a5bb190a3bebd71c03f19df73dd9852066c22fc7b"
 	expectedSmallContent = "small content, small content, small content, small content, small content, "
 	expectedLargeContent = "" // populated at the start of main, not to keep 1000 occurrences here
 )
@@ -295,8 +297,8 @@ func TestDMSGClientWithMultipleRoutes(t *testing.T) {
 }
 
 func TestEofShowcase(t *testing.T) {
+	go createDmsgClientForEofShowcase(t)
 	createDmsgSrvForEofShowcase()
-	createDmsgClientForEofShowcase()
 }
 
 func createDmsgSrv(t *testing.T, dc disc.APIClient) (srv *dmsg.Server, srvErr <-chan error) {
@@ -316,24 +318,28 @@ func createDmsgSrv(t *testing.T, dc disc.APIClient) (srv *dmsg.Server, srvErr <-
 
 func createDmsgSrvForEofShowcase() {
 	port := uint16(9091) // use any port you like here, make sure it's referenced in the cmd/client/http-client.go
-	// dmsgD := disc.NewHTTP("http://dmsg.discovery.skywire.skycoin.com")
-	dmsgD := disc.NewHTTP("http://localhost:9090")
+	dmsgD := disc.NewHTTP("http://http://dmsg.discovery.skywire.cc/")
+	//dmsgD := disc.NewHTTP("http://localhost:9090")
 
-	sPK, sSK := cipher.GenerateKeyPair()
+	pK := cipher.PubKey{}
+	sK := cipher.SecKey{}
+	pK.UnmarshalText([]byte(publicKey))
+	sK.UnmarshalText([]byte(secretKey))
+
 	// note down public key printed out bellow and use the value in cmd/client/http-client.go 'serverPubKey' value
-	fmt.Printf("Starting http server on public key: %s and port: %v", sPK.Hex(), port)
+	fmt.Printf("Starting http server on public key: %s and port: %v", pK.Hex(), port)
 
 	httpS := dmsghttp.Server{
-		PubKey:    sPK,
-		SecKey:    sSK,
+		PubKey:    pK,
+		SecKey:    sK,
 		Port:      port,
 		Discovery: dmsgD,
 	}
 
 	// prepare server route handling
 	mux := http.NewServeMux()
-	mux.HandleFunc("/small", SmallRequestHandler)
-	mux.HandleFunc("/large", LargeRequestHandler)
+	mux.HandleFunc("/small", dmsghttp.SmallRequestHandler)
+	mux.HandleFunc("/large", dmsghttp.LargeRequestHandler)
 
 	// run the server
 	sErr := make(chan error, 1)
@@ -341,7 +347,8 @@ func createDmsgSrvForEofShowcase() {
 	close(sErr)
 }
 
-func createDmsgClientForEofShowcase() {
+func createDmsgClientForEofShowcase(t *testing.T) {
+	time.Sleep(5 * time.Second)
 	var b bytes.Buffer
 	countExpectedLargeContent := 1000 // how many times we expect 'large content, ' phrase to appear in the response
 	for i := countExpectedLargeContent; i > 0; i-- {
@@ -349,26 +356,32 @@ func createDmsgClientForEofShowcase() {
 	}
 	expectedLargeContent = b.String()
 
-	sPK, sSK := cipher.GenerateKeyPair()
-	// disc := disc.NewHTTP("http://dmsg.discovery.skywire.skycoin.com")
-	disc := disc.NewHTTP("http://localhost:9090")
-	client := dmsghttp.DMSGClient(disc, sPK, sSK)
+	//sPK, sSK := cipher.GenerateKeyPair()
+	disc := disc.NewHTTP("http://http://dmsg.discovery.skywire.cc/")
+	//disc := disc.NewHTTP("http://localhost:9090")
+	pK := cipher.PubKey{}
+	sK := cipher.SecKey{}
+	pK.UnmarshalText([]byte(publicKey))
+	sK.UnmarshalText([]byte(secretKey))
+	client := dmsghttp.DMSGClient(disc, pK, sK)
 
 	// this one is returned ok
-	resp := MakeRequest("small", client)
+	resp := dmsghttp.MakeRequest("small", client)
 	if resp != expectedSmallContent {
 		fmt.Printf("Received small content is not what's expected. Expected %s but received %s\n", expectedSmallContent, resp)
+		t.Fail()
 		return
 	}
 	fmt.Println("Small content is ok")
 
 	// this one fails with following message "Error reading data:  http: unexpected EOF reading trailer"
-	resp = MakeRequest("large", client)
+	resp = dmsghttp.MakeRequest("large", client)
 	if resp != expectedLargeContent {
 		largeContentRegex := regexp.MustCompile("large content,")
 		matches := largeContentRegex.FindAllStringIndex(resp, -1)
 		countActual := len(matches) // how many times we received expected phrase,
 		fmt.Printf("Received large content is not what's expected. Expected %v but received %v 'large content' occurrences\n", countExpectedLargeContent, countActual)
+		t.Fail()
 		return
 	}
 	fmt.Print("Large content is ok")

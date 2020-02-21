@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	serverPubKey = "" // write down value printed out by server/http-server.go
+	serverPubKey = "036c4441b76aad343a9073d12f72d024009feabd8a0ccc92d3f88dacc93aafca65" // write down value printed out by server/http-server.go
 	serverPort   = "9091"
 )
 
