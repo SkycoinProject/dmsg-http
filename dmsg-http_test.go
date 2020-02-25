@@ -318,8 +318,8 @@ func createDmsgSrv(t *testing.T, dc disc.APIClient) (srv *dmsg.Server, srvErr <-
 
 func createDmsgSrvForEofShowcase() {
 	port := uint16(9091) // use any port you like here, make sure it's referenced in the cmd/client/http-client.go
-	dmsgD := disc.NewHTTP("http://http://dmsg.discovery.skywire.cc/")
-	//dmsgD := disc.NewHTTP("http://localhost:9090")
+	//dmsgD := disc.NewHTTP("http://http://dmsg.discovery.skywire.cc/")
+	dmsgD := disc.NewHTTP("http://localhost:9090")
 
 	pK := cipher.PubKey{}
 	sK := cipher.SecKey{}
@@ -357,8 +357,8 @@ func createDmsgClientForEofShowcase(t *testing.T) {
 	expectedLargeContent = b.String()
 
 	//sPK, sSK := cipher.GenerateKeyPair()
-	disc := disc.NewHTTP("http://http://dmsg.discovery.skywire.cc/")
-	//disc := disc.NewHTTP("http://localhost:9090")
+	//disc := disc.NewHTTP("http://http://dmsg.discovery.skywire.cc/")
+	disc := disc.NewHTTP("http://localhost:9090")
 	pK := cipher.PubKey{}
 	sK := cipher.SecKey{}
 	pK.UnmarshalText([]byte(publicKey))

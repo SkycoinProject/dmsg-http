@@ -17,7 +17,8 @@ import (
 
 // Defaults for dmsg configuration, such as discovery URL
 const (
-	DefaultDiscoveryURL = "http://dmsg.discovery.skywire.cc"
+	//DefaultDiscoveryURL = "http://dmsg.discovery.skywire.cc"
+	DefaultDiscoveryURL = "http://localhost:9090"
 )
 
 // DMSGTransport holds information about client who is initiating communication.
