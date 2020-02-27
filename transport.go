@@ -18,6 +18,7 @@ import (
 // Defaults for dmsg configuration, such as discovery URL
 const (
 	DefaultDiscoveryURL = "http://dmsg.discovery.skywire.cc"
+	//DefaultDiscoveryURL = "http://localhost:9090"
 )
 
 // DMSGTransport holds information about client who is initiating communication.
@@ -44,7 +45,7 @@ func (t DMSGTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	port := uint16(rPort)
 
 	serverAddress := dmsg.Addr{PK: pk, Port: port}
-	dmsgC, err := getClient(t.PubKey, t.SecKey)
+	dmsgC, err := GetClient(t.PubKey, t.SecKey)
 	if err != nil {
 		return nil, err
 	}
