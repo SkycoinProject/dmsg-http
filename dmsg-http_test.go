@@ -297,8 +297,9 @@ func TestDMSGClientWithMultipleRoutes(t *testing.T) {
 }
 
 func TestEofShowcase(t *testing.T) {
-	go createDmsgClientForEofShowcase(t)
-	createDmsgSrvForEofShowcase()
+	go createDmsgSrvForEofShowcase()
+	time.Sleep(5 * time.Second)
+	createDmsgClientForEofShowcase(t)
 }
 
 func createDmsgSrv(t *testing.T, dc disc.APIClient) (srv *dmsg.Server, srvErr <-chan error) {
@@ -318,8 +319,10 @@ func createDmsgSrv(t *testing.T, dc disc.APIClient) (srv *dmsg.Server, srvErr <-
 
 func createDmsgSrvForEofShowcase() {
 	port := uint16(9091) // use any port you like here, make sure it's referenced in the cmd/client/http-client.go
-	//dmsgD := disc.NewHTTP("http://http://dmsg.discovery.skywire.cc/")
-	dmsgD := disc.NewHTTP("http://localhost:9090")
+	dmsgD := disc.NewHTTP("http://http://dmsg.discovery.skywire.cc/")
+	//dmsgD := disc.NewHTTP("http://localhost:9090")
+
+	//sPK, sSK := cipher.GenerateKeyPair()
 
 	pK := cipher.PubKey{}
 	sK := cipher.SecKey{}
@@ -345,6 +348,7 @@ func createDmsgSrvForEofShowcase() {
 	sErr := make(chan error, 1)
 	sErr <- httpS.Serve(mux)
 	close(sErr)
+	fmt.Println(sErr)
 }
 
 func createDmsgClientForEofShowcase(t *testing.T) {
@@ -357,8 +361,8 @@ func createDmsgClientForEofShowcase(t *testing.T) {
 	expectedLargeContent = b.String()
 
 	//sPK, sSK := cipher.GenerateKeyPair()
-	//disc := disc.NewHTTP("http://http://dmsg.discovery.skywire.cc/")
-	disc := disc.NewHTTP("http://localhost:9090")
+	disc := disc.NewHTTP("http://http://dmsg.discovery.skywire.cc/")
+	//disc := disc.NewHTTP("http://localhost:9090")
 	pK := cipher.PubKey{}
 	sK := cipher.SecKey{}
 	pK.UnmarshalText([]byte(publicKey))
