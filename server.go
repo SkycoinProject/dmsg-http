@@ -3,23 +3,14 @@ package dmsghttp
 import (
 	"net/http"
 	"time"
-
-	"github.com/SkycoinProject/dmsg/cipher"
-	"github.com/SkycoinProject/dmsg/disc"
 )
 
 // Server holds relevant data for server to run properly
-// Data includes Public / Secret key pair that identifies the server.
-// There is also port on which server will listen.
-// Optional parameter is Discovery, if none is provided default one will be used.
-// Default dicovery URL is stored as dmsghttp.DefaultDiscoveryURL
+// Data includes parameters to instantiate a dmsgclient and a port on which server will listen.
 type Server struct {
-	PubKey    cipher.PubKey
-	SecKey    cipher.SecKey
-	Port      uint16
-	Discovery disc.APIClient
-
-	hs *http.Server
+	DMSGC *DMSGClient
+	Port  uint16
+	hs    *http.Server
 }
 
 // Serve handles request to dmsg server
@@ -27,7 +18,7 @@ type Server struct {
 func (s *Server) Serve(handler http.Handler) error {
 	s.hs = &http.Server{Handler: handler}
 
-	client, err := getClient(s.PubKey, s.SecKey)
+	client, err := GetClient(s.DMSGC)
 	if err != nil {
 		return err
 	}
@@ -40,6 +31,7 @@ func (s *Server) Serve(handler http.Handler) error {
 	if err != nil {
 		return err
 	}
+
 	return s.hs.Serve(list)
 }
 

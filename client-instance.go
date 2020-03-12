@@ -10,28 +10,50 @@ import (
 	"github.com/SkycoinProject/dmsg"
 )
 
-var (
-	singleton *dmsg.Client
-	once      sync.Once
-
-	usedPub cipher.PubKey
-	usedSec cipher.SecKey
-
-	errWrongPubKeyUsed error = errors.New("dmsg client already initialized with different pub key")
-	errWrongSecKeyUsed error = errors.New("dmsg client already initialized with different sec key")
+// Defaults for dmsg configuration, such as discovery URL
+const (
+	DefaultDiscoveryURL = "http://dmsg.discovery.skywire.cc"
 )
 
-func getClient(pubKey cipher.PubKey, secKey cipher.SecKey) (*dmsg.Client, error) {
-	once.Do(func() {
-		singleton = dmsg.NewClient(pubKey, secKey, disc.NewHTTP(DefaultDiscoveryURL), dmsg.DefaultConfig())
-		usedPub = pubKey
-		usedSec = secKey
-	})
-	if pubKey != usedPub {
-		return nil, errWrongPubKeyUsed
+// DMSGClient holds parameters required to instantiate a dmsg client instance
+type DMSGClient struct {
+	PubKey    cipher.PubKey
+	SecKey    cipher.SecKey
+	Discovery disc.APIClient
+	Config    *dmsg.Config
+}
+
+var (
+	clients = struct {
+		sync.RWMutex
+		entries map[cipher.PubKey]*dmsg.Client
+	}{entries: make(map[cipher.PubKey]*dmsg.Client)}
+
+	errCreate error = errors.New("dmsg client don't exists and was not created successfully")
+)
+
+func DefaultDMSGClient(pubKey cipher.PubKey, secKey cipher.SecKey) *DMSGClient {
+	return &DMSGClient{
+		PubKey:    pubKey,
+		SecKey:    secKey,
+		Discovery: disc.NewHTTP(DefaultDiscoveryURL),
+		Config:    dmsg.DefaultConfig(),
 	}
-	if secKey != usedSec {
-		return nil, errWrongSecKeyUsed
+}
+
+//GetClient returns DMSG client instance.
+func GetClient(dmsgC *DMSGClient) (*dmsg.Client, error) {
+	if val, ok := clients.entries[dmsgC.PubKey]; ok {
+		return val, nil
 	}
-	return singleton, nil
+
+	clients.Lock()
+	clients.entries[dmsgC.PubKey] = dmsg.NewClient(dmsgC.PubKey, dmsgC.SecKey, dmsgC.Discovery, dmsgC.Config)
+	clients.Unlock()
+
+	if clients.entries[dmsgC.PubKey] != nil {
+		return clients.entries[dmsgC.PubKey], nil
+	}
+
+	return nil, errCreate
 }

@@ -20,11 +20,16 @@ serverPort := uint16(8080)
 
 // prepare the server
 sPK, sSK := cipher.GenerateKeyPair()
+dmsgC := &DMSGClient{
+	PubKey:    sPK,
+	SecKey:    sSK,
+	Discovery: dmsgD,
+	Config:    dmsg.DefaultConfig(),
+}
+
 httpS := dmsghttp.Server{
-    PubKey: sPK,
-    SecKey: sSK,
+    DMSGC: dmsgC,
     Port: testPort,
-    Discovery: dmsgD
 }
 
 // prepare server route handling
@@ -49,7 +54,14 @@ If you would like to talk to this server following code will suffice
 ```golang
 // prepare the client
 cPK, cSK := cipher.GenerateKeyPair()
-c := dmsghttp.DMSGClient(dmsgD, cPK, cSK)
+dmsgC := &DMSGClient{
+	PubKey:    cPK,
+	SecKey:    cSK,
+	Discovery: dmsgD,
+	Config:    dmsg.DefaultConfig(),
+}
+
+c := dmsghttp.Client(dmsgC)
 
 // make request
 req, err := http.NewRequest("GET", fmt.Sprintf("dmsg://%v:%d/some-route", sPK.Hex(), testPort), nil)

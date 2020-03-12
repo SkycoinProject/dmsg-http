@@ -31,7 +31,12 @@ func TestDMSGClient(t *testing.T) {
 
 	// generate keys and create server
 	sPK, sSK := cipher.GenerateKeyPair()
-	httpS := dmsghttp.Server{PubKey: sPK, SecKey: sSK, Port: testPort, Discovery: dmsgD}
+	httpS := dmsghttp.Server{DMSGC: &dmsghttp.DMSGClient{
+		PubKey:    sPK,
+		SecKey:    sSK,
+		Discovery: dmsgD,
+		Config:    dmsg.DefaultConfig(),
+	}, Port: testPort}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
@@ -55,7 +60,12 @@ func TestDMSGClient(t *testing.T) {
 
 	// generate keys and initiate client
 	cPK, cSK := cipher.GenerateKeyPair()
-	c := dmsghttp.DMSGClient(dmsgD, cPK, cSK)
+	c := dmsghttp.Client(&dmsghttp.DMSGClient{
+		PubKey:    cPK,
+		SecKey:    cSK,
+		Discovery: dmsgD,
+		Config:    dmsg.DefaultConfig(),
+	})
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("dmsg://%v:%d/", sPK.Hex(), testPort), nil)
 	require.NoError(t, err)
@@ -80,7 +90,12 @@ func TestDMSGClientTargetingSpecificRoute(t *testing.T) {
 
 	// generate keys and create server
 	sPK, sSK := cipher.GenerateKeyPair()
-	httpS := dmsghttp.Server{PubKey: sPK, SecKey: sSK, Port: testPort, Discovery: dmsgD}
+	httpS := dmsghttp.Server{DMSGC: &dmsghttp.DMSGClient{
+		PubKey:    sPK,
+		SecKey:    sSK,
+		Discovery: dmsgD,
+		Config:    dmsg.DefaultConfig(),
+	}, Port: testPort}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/route", func(w http.ResponseWriter, _ *http.Request) {
@@ -104,7 +119,12 @@ func TestDMSGClientTargetingSpecificRoute(t *testing.T) {
 
 	// generate keys and initiate client
 	cPK, cSK := cipher.GenerateKeyPair()
-	c := dmsghttp.DMSGClient(dmsgD, cPK, cSK)
+	c := dmsghttp.Client(&dmsghttp.DMSGClient{
+		PubKey:    cPK,
+		SecKey:    cSK,
+		Discovery: dmsgD,
+		Config:    dmsg.DefaultConfig(),
+	})
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("dmsg://%v:%d/route", sPK.Hex(), testPort), nil)
 	require.NoError(t, err)
@@ -129,7 +149,12 @@ func TestDMSGClientWithMultipleRoutes(t *testing.T) {
 
 	// generate keys and create server
 	sPK, sSK := cipher.GenerateKeyPair()
-	httpS := dmsghttp.Server{PubKey: sPK, SecKey: sSK, Port: testPort, Discovery: dmsgD}
+	httpS := dmsghttp.Server{DMSGC: &dmsghttp.DMSGClient{
+		PubKey:    sPK,
+		SecKey:    sSK,
+		Discovery: dmsgD,
+		Config:    dmsg.DefaultConfig(),
+	}, Port: testPort}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
@@ -165,8 +190,12 @@ func TestDMSGClientWithMultipleRoutes(t *testing.T) {
 
 	// generate keys and initiate client
 	cPK, cSK := cipher.GenerateKeyPair()
-	c := dmsghttp.DMSGClient(dmsgD, cPK, cSK)
-
+	c := dmsghttp.Client(&dmsghttp.DMSGClient{
+		PubKey:    cPK,
+		SecKey:    cSK,
+		Discovery: dmsgD,
+		Config:    dmsg.DefaultConfig(),
+	})
 	// check root route
 	req, err := http.NewRequest("GET", fmt.Sprintf("dmsg://%v:%d/", sPK.Hex(), testPort), nil)
 	require.NoError(t, err)
@@ -206,11 +235,10 @@ func createDmsgSrv(t *testing.T, dc disc.APIClient) (srv *dmsg.Server, srvErr <-
 	require.NoError(t, err)
 	l, err := nettest.NewLocalListener("tcp")
 	require.NoError(t, err)
-	srv, err = dmsg.NewServer(pk, sk, "", l, dc)
-	require.NoError(t, err)
+	srv = dmsg.NewServer(pk, sk, dc, 10)
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- srv.Serve()
+		errCh <- srv.Serve(l, "")
 		close(errCh)
 	}()
 	return srv, errCh
