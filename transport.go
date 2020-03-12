@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -26,13 +27,16 @@ func (t Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// process remote pub key and port from dmsg-addr request header
 	addrSplit := strings.Split(req.Host, ":")
 	if len(addrSplit) != 2 {
-		return nil, errors.New("Invalid server Pub Key or Port")
+		return nil, errors.New("invalid server Pub Key or Port")
 	}
 	var pk cipher.PubKey
 	if err := pk.Set(addrSplit[0]); err != nil {
 		return nil, err
 	}
-	rPort, _ := strconv.Atoi(addrSplit[1])
+	rPort, err := strconv.Atoi(addrSplit[1])
+	if err != nil {
+		return nil, fmt.Errorf("invalid port: %v", err)
+	}
 	port := uint16(rPort)
 
 	serverAddress := dmsg.Addr{PK: pk, Port: port}
@@ -55,7 +59,7 @@ func (t Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if streamErr != nil {
 		return nil, streamErr
 	}
-	defer stream.Close()
+	defer stream.Close() //nolint:errcheck
 
 	if err := req.Write(stream); err != nil {
 		return nil, err

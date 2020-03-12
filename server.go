@@ -1,8 +1,9 @@
 package dmsghttp
 
 import (
-	"github.com/SkycoinProject/dmsg"
 	"net/http"
+
+	"github.com/SkycoinProject/dmsg"
 )
 
 // Server holds relevant data for server to run properly

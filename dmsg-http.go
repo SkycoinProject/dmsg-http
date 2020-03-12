@@ -1,9 +1,10 @@
 package dmsghttp
 
 import (
-	"github.com/SkycoinProject/dmsg"
 	"net/http"
 	"time"
+
+	"github.com/SkycoinProject/dmsg"
 )
 
 const (
