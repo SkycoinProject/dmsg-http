@@ -16,12 +16,12 @@ import (
 
 // Transport holds information about client who is initiating communication.
 type Transport struct {
-	DMSGC      *DMSGClient
+	DmsgClient *dmsg.Client
 	RetryCount uint8
 }
 
 // RoundTrip implements golang's http package support for alternative transport protocols.
-// In this case DMSG is used instead of TCP to initiate the communication with the server.
+// In this case dmsg is used instead of TCP to initiate the communication with the server.
 func (t Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// process remote pub key and port from dmsg-addr request header
 	addrSplit := strings.Split(req.Host, ":")
@@ -37,17 +37,12 @@ func (t Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	serverAddress := dmsg.Addr{PK: pk, Port: port}
 
-	client, err := GetClient(t.DMSGC)
-	if err != nil {
-		return nil, err
-	}
-
 	var (
 		stream    *dmsg.Stream
 		streamErr error
 	)
 	for i := uint8(0); i < t.RetryCount; i++ {
-		stream, streamErr = client.DialStream(context.Background(), serverAddress)
+		stream, streamErr = t.DmsgClient.DialStream(context.Background(), serverAddress)
 		if streamErr != nil {
 			log.Printf("Error dialing responder: %s. retrying...", streamErr)
 			// Adding this to make sure we have enough time for delegate servers to become available

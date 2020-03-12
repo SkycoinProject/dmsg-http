@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/SkycoinProject/dmsg"
 	"github.com/SkycoinProject/dmsg/cipher"
@@ -19,7 +20,7 @@ const (
 	testPort uint16 = 8081
 )
 
-func TestDMSGClient(t *testing.T) {
+func TestDmsgHTTP(t *testing.T) {
 	dmsgD := disc.NewMock()
 	dmsgS, dmsgSErr := createDmsgSrv(t, dmsgD)
 	defer func() {
@@ -31,12 +32,12 @@ func TestDMSGClient(t *testing.T) {
 
 	// generate keys and create server
 	sPK, sSK := cipher.GenerateKeyPair()
-	httpS := dmsghttp.Server{DMSGC: &dmsghttp.DMSGClient{
-		PubKey:    sPK,
-		SecKey:    sSK,
-		Discovery: dmsgD,
-		Config:    dmsg.DefaultConfig(),
-	}, Port: testPort}
+	dmsgServerClient := dmsg.NewClient(sPK, sSK, dmsgD, dmsg.DefaultConfig())
+	go dmsgServerClient.Serve()
+
+	time.Sleep(time.Second) // wait for dmsg client to be ready
+
+	httpS := dmsghttp.Server{DmsgClient: dmsgServerClient, Port: testPort}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
@@ -60,12 +61,12 @@ func TestDMSGClient(t *testing.T) {
 
 	// generate keys and initiate client
 	cPK, cSK := cipher.GenerateKeyPair()
-	c := dmsghttp.Client(&dmsghttp.DMSGClient{
-		PubKey:    cPK,
-		SecKey:    cSK,
-		Discovery: dmsgD,
-		Config:    dmsg.DefaultConfig(),
-	})
+	dmsgClient := dmsg.NewClient(cPK, cSK, dmsgD, dmsg.DefaultConfig())
+	go dmsgServerClient.Serve()
+
+	time.Sleep(time.Second) // wait for dmsg client to be ready
+
+	c := dmsghttp.Client(dmsgClient)
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("dmsg://%v:%d/", sPK.Hex(), testPort), nil)
 	require.NoError(t, err)
@@ -78,7 +79,7 @@ func TestDMSGClient(t *testing.T) {
 	require.Equal(t, "Hello World!", string(respB))
 }
 
-func TestDMSGClientTargetingSpecificRoute(t *testing.T) {
+func TestDmsgHTTPTargetingSpecificRoute(t *testing.T) {
 	dmsgD := disc.NewMock()
 	dmsgS, dmsgSErr := createDmsgSrv(t, dmsgD)
 	defer func() {
@@ -90,12 +91,12 @@ func TestDMSGClientTargetingSpecificRoute(t *testing.T) {
 
 	// generate keys and create server
 	sPK, sSK := cipher.GenerateKeyPair()
-	httpS := dmsghttp.Server{DMSGC: &dmsghttp.DMSGClient{
-		PubKey:    sPK,
-		SecKey:    sSK,
-		Discovery: dmsgD,
-		Config:    dmsg.DefaultConfig(),
-	}, Port: testPort}
+	dmsgServerClient := dmsg.NewClient(sPK, sSK, dmsgD, dmsg.DefaultConfig())
+	go dmsgServerClient.Serve()
+
+	time.Sleep(time.Second) // wait for dmsg client to be ready
+
+	httpS := dmsghttp.Server{DmsgClient: dmsgServerClient, Port: testPort}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/route", func(w http.ResponseWriter, _ *http.Request) {
@@ -119,13 +120,12 @@ func TestDMSGClientTargetingSpecificRoute(t *testing.T) {
 
 	// generate keys and initiate client
 	cPK, cSK := cipher.GenerateKeyPair()
-	c := dmsghttp.Client(&dmsghttp.DMSGClient{
-		PubKey:    cPK,
-		SecKey:    cSK,
-		Discovery: dmsgD,
-		Config:    dmsg.DefaultConfig(),
-	})
+	dmsgClient := dmsg.NewClient(cPK, cSK, dmsgD, dmsg.DefaultConfig())
+	go dmsgClient.Serve()
 
+	time.Sleep(time.Second) // wait for dmsg client to be ready
+
+	c := dmsghttp.Client(dmsgClient)
 	req, err := http.NewRequest("GET", fmt.Sprintf("dmsg://%v:%d/route", sPK.Hex(), testPort), nil)
 	require.NoError(t, err)
 
@@ -149,12 +149,12 @@ func TestDMSGClientWithMultipleRoutes(t *testing.T) {
 
 	// generate keys and create server
 	sPK, sSK := cipher.GenerateKeyPair()
-	httpS := dmsghttp.Server{DMSGC: &dmsghttp.DMSGClient{
-		PubKey:    sPK,
-		SecKey:    sSK,
-		Discovery: dmsgD,
-		Config:    dmsg.DefaultConfig(),
-	}, Port: testPort}
+	dmsgServerClient := dmsg.NewClient(sPK, sSK, dmsgD, dmsg.DefaultConfig())
+	go dmsgServerClient.Serve()
+
+	time.Sleep(time.Second) // wait for dmsg client to be ready
+
+	httpS := dmsghttp.Server{DmsgClient: dmsgServerClient, Port: testPort}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
@@ -190,12 +190,12 @@ func TestDMSGClientWithMultipleRoutes(t *testing.T) {
 
 	// generate keys and initiate client
 	cPK, cSK := cipher.GenerateKeyPair()
-	c := dmsghttp.Client(&dmsghttp.DMSGClient{
-		PubKey:    cPK,
-		SecKey:    cSK,
-		Discovery: dmsgD,
-		Config:    dmsg.DefaultConfig(),
-	})
+	dmsgClient := dmsg.NewClient(cPK, cSK, dmsgD, dmsg.DefaultConfig())
+	go dmsgClient.Serve()
+
+	time.Sleep(time.Second) // wait for dmsg client to be ready
+
+	c := dmsghttp.Client(dmsgClient)
 	// check root route
 	req, err := http.NewRequest("GET", fmt.Sprintf("dmsg://%v:%d/", sPK.Hex(), testPort), nil)
 	require.NoError(t, err)

@@ -1,29 +1,26 @@
 package dmsghttp
 
 import (
+	"github.com/SkycoinProject/dmsg"
 	"net/http"
 	"time"
-
-	"github.com/SkycoinProject/dmsg/cipher"
 )
 
-// DefaultDMSGClient creates http Client using default discovery service
-// Default value can be found in dmsghttp.DefaultDiscoveryURL
-func DefaultClient(pubKey cipher.PubKey, secKey cipher.SecKey) *http.Client {
-	return Client(DefaultDMSGClient(pubKey, secKey))
-}
+const (
+	clientTimeout = 30 * time.Second
+)
 
-// Client creates http Client using provided discovery service and public / secret keypair
+// Client creates a http client
 // Returned client is using dmsg transport protocol instead of tcp for establishing connection
-func Client(dmsgC *DMSGClient) *http.Client {
+func Client(dmsgC *dmsg.Client) *http.Client {
 	transport := Transport{
-		DMSGC:      dmsgC,
+		DmsgClient: dmsgC,
 		RetryCount: 20,
 	}
 
 	return &http.Client{
 		Transport: transport,
 		Jar:       nil,
-		Timeout:   time.Second * 30,
+		Timeout:   clientTimeout,
 	}
 }
