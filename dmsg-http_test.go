@@ -37,8 +37,6 @@ func TestDmsgHTTP(t *testing.T) {
 
 	time.Sleep(time.Second) // wait for dmsg client to be ready
 
-	httpS := dmsghttp.Server{DmsgClient: dmsgServerClient, Port: testPort}
-
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		_, err := w.Write([]byte("Hello World!"))
@@ -47,13 +45,22 @@ func TestDmsgHTTP(t *testing.T) {
 		}
 	})
 
+	srv := &http.Server{
+		Handler: mux,
+	}
+
+	list, err := dmsgServerClient.Listen(testPort)
+	if err != nil {
+		panic(err)
+	}
+
 	sErr := make(chan error, 1)
 	go func() {
-		sErr <- httpS.Serve(mux)
+		sErr <- srv.Serve(list)
 		close(sErr)
 	}()
 	defer func() {
-		require.NoError(t, httpS.Close())
+		require.NoError(t, srv.Close())
 		err := <-sErr
 		require.Error(t, err)
 		require.Equal(t, "http: Server closed", err.Error())
@@ -96,8 +103,6 @@ func TestDmsgHTTPTargetingSpecificRoute(t *testing.T) {
 
 	time.Sleep(time.Second) // wait for dmsg client to be ready
 
-	httpS := dmsghttp.Server{DmsgClient: dmsgServerClient, Port: testPort}
-
 	mux := http.NewServeMux()
 	mux.HandleFunc("/route", func(w http.ResponseWriter, _ *http.Request) {
 		_, err := w.Write([]byte("Routes Work!"))
@@ -106,13 +111,22 @@ func TestDmsgHTTPTargetingSpecificRoute(t *testing.T) {
 		}
 	})
 
+	srv := &http.Server{
+		Handler: mux,
+	}
+
+	list, err := dmsgServerClient.Listen(testPort)
+	if err != nil {
+		panic(err)
+	}
+
 	sErr := make(chan error, 1)
 	go func() {
-		sErr <- httpS.Serve(mux)
+		sErr <- srv.Serve(list)
 		close(sErr)
 	}()
 	defer func() {
-		require.NoError(t, httpS.Close())
+		require.NoError(t, srv.Close())
 		err := <-sErr
 		require.Error(t, err)
 		require.Equal(t, "http: Server closed", err.Error())
@@ -154,8 +168,6 @@ func TestDMSGClientWithMultipleRoutes(t *testing.T) {
 
 	time.Sleep(time.Second) // wait for dmsg client to be ready
 
-	httpS := dmsghttp.Server{DmsgClient: dmsgServerClient, Port: testPort}
-
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		_, err := w.Write([]byte("Hello World!"))
@@ -176,13 +188,22 @@ func TestDMSGClientWithMultipleRoutes(t *testing.T) {
 		}
 	})
 
+	srv := &http.Server{
+		Handler: mux,
+	}
+
+	list, err := dmsgServerClient.Listen(testPort)
+	if err != nil {
+		panic(err)
+	}
+
 	sErr := make(chan error, 1)
 	go func() {
-		sErr <- httpS.Serve(mux)
+		sErr <- srv.Serve(list)
 		close(sErr)
 	}()
 	defer func() {
-		require.NoError(t, httpS.Close())
+		require.NoError(t, srv.Close())
 		err := <-sErr
 		require.Error(t, err)
 		require.Equal(t, "http: Server closed", err.Error())

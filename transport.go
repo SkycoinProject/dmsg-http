@@ -33,6 +33,7 @@ func (t Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if err := pk.Set(addrSplit[0]); err != nil {
 		return nil, err
 	}
+
 	rPort, err := strconv.Atoi(addrSplit[1])
 	if err != nil {
 		return nil, fmt.Errorf("invalid port: %v", err)

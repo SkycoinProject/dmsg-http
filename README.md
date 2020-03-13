@@ -1,8 +1,7 @@
 # dmsg-http
 
-Http library for dmsg.
-It supports all the features from standard golang http library.
-Only difference is that instead of tcp as transport protocol it uses DMSG.
+HTTP library for dmsg.
+Provides a custom http transport to send requests using dmsg protocol instead of tcp.
 
 In order to run the tests for this project you should run following line
 
@@ -20,17 +19,10 @@ serverPort := uint16(8080)
 
 // prepare the server
 sPK, sSK := cipher.GenerateKeyPair()
-dmsgC := &DMSGClient{
-	PubKey:    sPK,
-	SecKey:    sSK,
-	Discovery: dmsgD,
-	Config:    dmsg.DefaultConfig(),
-}
+dmsgClient := dmsg.NewClient(sPK, sSK, dmsgD, dmsg.DefaultConfig())
+go dmsgClient.Serve()
 
-httpS := dmsghttp.Server{
-    DMSGC: dmsgC,
-    Port: testPort,
-}
+time.Sleep(time.Second) // wait for dmsg client to be ready
 
 // prepare server route handling
 mux := http.NewServeMux()
@@ -42,11 +34,21 @@ mux.HandleFunc("/some-route", func(w http.ResponseWriter, _ *http.Request) {
 })
 
 // run the server
+srv := &http.Server{
+    Handler: mux,
+}
+
+list, err := dmsgClient.Listen(serverPort)
+if err != nil {
+    panic(err)
+}
+
 sErr := make(chan error, 1)
 go func() {
-    sErr <- httpS.Serve(mux)
+    sErr <- srv.Serve(list)
     close(sErr)
 }()
+
 ```
 
 If you would like to talk to this server following code will suffice
@@ -54,12 +56,10 @@ If you would like to talk to this server following code will suffice
 ```golang
 // prepare the client
 cPK, cSK := cipher.GenerateKeyPair()
-dmsgC := &DMSGClient{
-	PubKey:    cPK,
-	SecKey:    cSK,
-	Discovery: dmsgD,
-	Config:    dmsg.DefaultConfig(),
-}
+dmsgClient := dmsg.NewClient(cPK, cSK, dmsgD, dmsg.DefaultConfig())
+go dmsgClient.Serve()
+
+time.Sleep(time.Second) // wait for dmsg client to be ready
 
 c := dmsghttp.Client(dmsgC)
 
