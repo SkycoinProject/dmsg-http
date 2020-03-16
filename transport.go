@@ -5,11 +5,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/SkycoinProject/dmsg"
 	"github.com/SkycoinProject/dmsg/cipher"
@@ -18,7 +16,6 @@ import (
 // Transport holds information about client who is initiating communication.
 type Transport struct {
 	DmsgClient *dmsg.Client
-	RetryCount uint8
 }
 
 // RoundTrip implements golang's http package support for alternative transport protocols.
@@ -46,17 +43,8 @@ func (t Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 		stream    *dmsg.Stream
 		streamErr error
 	)
-	for i := uint8(0); i < t.RetryCount; i++ {
-		stream, streamErr = t.DmsgClient.DialStream(context.Background(), serverAddress)
-		if streamErr != nil {
-			log.Printf("Error dialing responder: %s. retrying...", streamErr)
-			// Adding this to make sure we have enough time for delegate servers to become available
-			time.Sleep(200 * time.Millisecond)
-			continue
-		}
-		streamErr = nil
-		break
-	}
+
+	stream, streamErr = t.DmsgClient.DialStream(context.Background(), serverAddress)
 	if streamErr != nil {
 		return nil, streamErr
 	}

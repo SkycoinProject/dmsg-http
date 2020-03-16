@@ -76,7 +76,6 @@ func TestDmsgHTTP(t *testing.T) {
 
 	dmsgTransport := dmsghttp.Transport{
 		DmsgClient: dmsgClient,
-		RetryCount: 20,
 	}
 	c := &http.Client{
 		Transport: dmsgTransport,
@@ -149,7 +148,6 @@ func TestDmsgHTTPTargetingSpecificRoute(t *testing.T) {
 
 	dmsgTransport := dmsghttp.Transport{
 		DmsgClient: dmsgClient,
-		RetryCount: 20,
 	}
 	c := &http.Client{
 		Transport: dmsgTransport,
@@ -234,7 +232,6 @@ func TestDMSGClientWithMultipleRoutes(t *testing.T) {
 
 	dmsgTransport := dmsghttp.Transport{
 		DmsgClient: dmsgClient,
-		RetryCount: 20,
 	}
 	c := &http.Client{
 		Transport: dmsgTransport,

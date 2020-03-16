@@ -62,9 +62,8 @@ go dmsgClient.Serve()
 time.Sleep(time.Second) // wait for dmsg client to be ready
 
 dmsgTransport := dmsghttp.Transport{
-		DmsgClient: dmsgClient,
-		RetryCount: 20,
-	}
+	DmsgClient: dmsgClient,
+}
 
 c := &http.Client{
 	Transport:     dmsgTransport, 
