@@ -17,7 +17,8 @@ import (
 )
 
 const (
-	testPort uint16 = 8081
+	testPort      uint16 = 8081
+	clientTimeout        = 30 * time.Second
 )
 
 func TestDmsgHTTP(t *testing.T) {
@@ -73,7 +74,14 @@ func TestDmsgHTTP(t *testing.T) {
 
 	time.Sleep(time.Second) // wait for dmsg client to be ready
 
-	c := dmsghttp.Client(dmsgClient)
+	dmsgTransport := dmsghttp.Transport{
+		DmsgClient: dmsgClient,
+		RetryCount: 20,
+	}
+	c := &http.Client{
+		Transport: dmsgTransport,
+		Timeout:   clientTimeout,
+	}
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("dmsg://%v:%d/", sPK.Hex(), testPort), nil)
 	require.NoError(t, err)
@@ -139,7 +147,15 @@ func TestDmsgHTTPTargetingSpecificRoute(t *testing.T) {
 
 	time.Sleep(time.Second) // wait for dmsg client to be ready
 
-	c := dmsghttp.Client(dmsgClient)
+	dmsgTransport := dmsghttp.Transport{
+		DmsgClient: dmsgClient,
+		RetryCount: 20,
+	}
+	c := &http.Client{
+		Transport: dmsgTransport,
+		Timeout:   clientTimeout,
+	}
+
 	req, err := http.NewRequest("GET", fmt.Sprintf("dmsg://%v:%d/route", sPK.Hex(), testPort), nil)
 	require.NoError(t, err)
 
@@ -216,7 +232,14 @@ func TestDMSGClientWithMultipleRoutes(t *testing.T) {
 
 	time.Sleep(time.Second) // wait for dmsg client to be ready
 
-	c := dmsghttp.Client(dmsgClient)
+	dmsgTransport := dmsghttp.Transport{
+		DmsgClient: dmsgClient,
+		RetryCount: 20,
+	}
+	c := &http.Client{
+		Transport: dmsgTransport,
+		Timeout:   clientTimeout,
+	}
 	// check root route
 	req, err := http.NewRequest("GET", fmt.Sprintf("dmsg://%v:%d/", sPK.Hex(), testPort), nil)
 	require.NoError(t, err)

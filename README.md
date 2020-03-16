@@ -61,7 +61,15 @@ go dmsgClient.Serve()
 
 time.Sleep(time.Second) // wait for dmsg client to be ready
 
-c := dmsghttp.Client(dmsgC)
+dmsgTransport := dmsghttp.Transport{
+		DmsgClient: dmsgClient,
+		RetryCount: 20,
+	}
+
+c := &http.Client{
+	Transport:     dmsgTransport, 
+	Timeout:       clientTimeout,
+}
 
 // make request
 req, err := http.NewRequest("GET", fmt.Sprintf("dmsg://%v:%d/some-route", sPK.Hex(), testPort), nil)
