@@ -1,7 +1,7 @@
 DEFAULT_GOAL := help
 .PHONY : check lint install-linters dep
 OPTS?=GO111MODULE=on
-TEST_OPTS?=-race -tags no_ci -cover -timeout=5m
+TEST_OPTS?=-race -tags no_ci -cover -timeout=10m
 
 check: lint test ## Run linters and tests
 

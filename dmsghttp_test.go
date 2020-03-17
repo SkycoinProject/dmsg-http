@@ -21,7 +21,7 @@ const (
 	testPort         uint16 = 8081
 	clientTimeout           = 30 * time.Second
 	discoveryAddr           = "http://dmsg.discovery.skywire.cc"
-	parallelRequests        = 100
+	parallelRequests        = 20
 )
 
 func TestDmsgHTTP(t *testing.T) {
