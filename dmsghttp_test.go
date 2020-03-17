@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 
@@ -17,8 +18,10 @@ import (
 )
 
 const (
-	testPort      uint16 = 8081
-	clientTimeout        = 30 * time.Second
+	testPort         uint16 = 8081
+	clientTimeout           = 30 * time.Second
+	discoveryAddr           = "http://dmsg.discovery.skywire.cc"
+	parallelRequests        = 100
 )
 
 func TestDmsgHTTP(t *testing.T) {
@@ -165,7 +168,7 @@ func TestDmsgHTTPTargetingSpecificRoute(t *testing.T) {
 	require.Equal(t, "Routes Work!", string(respB))
 }
 
-func TestDMSGClientWithMultipleRoutes(t *testing.T) {
+func TestDmsgHTTPWithMultipleRoutes(t *testing.T) {
 	dmsgD := disc.NewMock()
 	dmsgS, dmsgSErr := createDmsgSrv(t, dmsgD)
 	defer func() {
@@ -269,6 +272,83 @@ func TestDMSGClientWithMultipleRoutes(t *testing.T) {
 	respB, err = ioutil.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.Equal(t, "Routes really do Work!", string(respB))
+}
+
+func TestDmsgHTTPParallelRequests(t *testing.T) {
+	dmsgD := disc.NewHTTP(discoveryAddr)
+
+	// generate keys and create server
+	sPK, sSK := cipher.GenerateKeyPair()
+	dmsgServerClient := dmsg.NewClient(sPK, sSK, dmsgD, dmsg.DefaultConfig())
+	go dmsgServerClient.Serve()
+
+	time.Sleep(time.Second) // wait for dmsg client to be ready
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
+		_, err := w.Write([]byte("Hello World!"))
+		if err != nil {
+			panic(err)
+		}
+	})
+
+	srv := &http.Server{
+		Handler: mux,
+	}
+
+	list, err := dmsgServerClient.Listen(testPort)
+	if err != nil {
+		panic(err)
+	}
+
+	sErr := make(chan error, 1)
+	go func() {
+		sErr <- srv.Serve(list)
+		close(sErr)
+	}()
+	defer func() {
+		require.NoError(t, srv.Close())
+		err := <-sErr
+		require.Error(t, err)
+		require.Equal(t, "http: Server closed", err.Error())
+	}()
+
+	// generate keys and initiate client
+	cPK, cSK := cipher.GenerateKeyPair()
+	dmsgClient := dmsg.NewClient(cPK, cSK, dmsgD, dmsg.DefaultConfig())
+	go dmsgServerClient.Serve()
+
+	time.Sleep(time.Second) // wait for dmsg client to be ready
+
+	dmsgTransport := dmsghttp.Transport{
+		DmsgClient: dmsgClient,
+	}
+	c := &http.Client{
+		Transport: dmsgTransport,
+		Timeout:   clientTimeout,
+	}
+
+	wg := &sync.WaitGroup{}
+	wg.Add(parallelRequests)
+	starter := make(chan struct{})
+	for i := 0; i < parallelRequests; i++ {
+		go func() {
+			<-starter
+			req, err := http.NewRequest("GET", fmt.Sprintf("dmsg://%v:%d/", sPK.Hex(), testPort), nil)
+			require.NoError(t, err)
+
+			resp, err := c.Do(req)
+			require.NoError(t, err)
+
+			respB, err := ioutil.ReadAll(resp.Body)
+			require.NoError(t, err)
+			require.Equal(t, "Hello World!", string(respB))
+			wg.Done()
+		}()
+	}
+	close(starter)
+	wg.Wait()
+
 }
 
 func createDmsgSrv(t *testing.T, dc disc.APIClient) (srv *dmsg.Server, srvErr <-chan error) {
