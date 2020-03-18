@@ -34,7 +34,7 @@ func (cs *ClientSession) DialStream(dst Addr) (dStr *Stream, err error) {
 	defer func() {
 		if err != nil {
 			cs.log.WithError(dStr.Close()).
-				Debug("On DialStream() failure, close stream resulted in error.") // TODO(evanlinjin): Race condition?
+				Debug("Stream closed on DialStream() failure.")
 		}
 	}()
 
@@ -71,6 +71,12 @@ func (cs *ClientSession) serve() error {
 	}()
 	for {
 		if _, err := cs.acceptStream(); err != nil {
+			if netErr, ok := err.(net.Error); ok && netErr.Temporary() {
+				cs.log.
+					WithError(err).
+					Info("ClientSession.acceptStream() temporary error, continuing...")
+				continue
+			}
 			cs.log.WithError(err).Warn("Stopped accepting streams.")
 			return err
 		}
