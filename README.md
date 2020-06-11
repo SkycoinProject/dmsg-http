@@ -1,5 +1,7 @@
 # dmsg-http
 
+**IMPORTANT: This repo has been deprecated. Use github.com/SkycoinProject/dmsg**
+
 HTTP library for dmsg.
 Provides a custom http transport to send requests using dmsg protocol instead of tcp.
 
